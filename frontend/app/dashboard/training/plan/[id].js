@@ -102,7 +102,7 @@ export default function PlanDetails() {
         <View style={styles.container}>
             {/* Snorlax Header Background */}
             <ImageBackground
-                source={require('../../../../assets/images/snorlax_sleeping.png')}
+                source={require('../../../../assets/images/monster_sleeping.png')}
                 style={styles.headerBackground}
                 imageStyle={{ opacity: 0.1, resizeMode: 'cover', top: -50 }}
             >

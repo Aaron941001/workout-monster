@@ -28,8 +28,8 @@ const TrendCard = ({ data }) => {
                 </View>
                 <Image
                     source={isSuccess
-                        ? require('../../assets/images/snorlax_success.png')
-                        : require('../../assets/images/snorlax_lifting.png')}
+                        ? require('../../assets/images/monster_success.png')
+                        : require('../../assets/images/monster_lifting.png')}
                     style={{ width: 80, height: 80, marginTop: -20, marginRight: -10 }}
                     resizeMode="contain"
                 />

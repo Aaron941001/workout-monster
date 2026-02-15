@@ -222,7 +222,7 @@ export default function ActiveWorkout() {
 
             <View style={{ alignItems: 'center', marginTop: 40, opacity: 0.8 }}>
                 <Image
-                    source={require('../../../assets/images/snorlax_lifting.png')}
+                    source={require('../../../assets/images/monster_lifting.png')}
                     style={{ width: 120, height: 120 }}
                     resizeMode="contain"
                 />
@@ -237,7 +237,7 @@ export default function ActiveWorkout() {
                     <View style={styles.timerCard}>
                         <Text style={styles.timerTitle}>Resting</Text>
                         <Image
-                            source={require('../../../assets/images/snorlax_sleeping.png')}
+                            source={require('../../../assets/images/monster_sleeping.png')}
                             style={{ width: 150, height: 150, marginBottom: 20 }}
                             resizeMode="contain"
                         />
