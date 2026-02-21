@@ -4,6 +4,7 @@ from backend import models, schemas, database
 from backend import auth as auth_logic
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import datetime, timedelta
+import httpx
 
 router = APIRouter(
     prefix="/auth",
@@ -47,3 +48,48 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         data={"sub": user.email}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+from pydantic import BaseModel
+
+class GoogleAuthRequest(BaseModel):
+    id_token: str  # This is the access_token from expo-auth-session Google provider
+
+@router.post("/google", response_model=schemas.Token)
+async def google_login(payload: GoogleAuthRequest, db: Session = Depends(database.get_db)):
+    """Exchange Google access token for app JWT"""
+    # Verify with Google's userinfo endpoint
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            headers={"Authorization": f"Bearer {payload.id_token}"}
+        )
+    
+    if resp.status_code != 200:
+        raise HTTPException(status_code=401, detail="Invalid Google token")
+    
+    google_user = resp.json()
+    email = google_user.get("email")
+    name = google_user.get("name") or email.split("@")[0]
+    
+    if not email:
+        raise HTTPException(status_code=400, detail="Could not get email from Google")
+    
+    # Find or create user
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if not user:
+        user = models.User(
+            email=email,
+            password_hash="GOOGLE_AUTH",  # No password for Google users
+            display_name=name,
+            settings={}
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    
+    access_token_expires = timedelta(minutes=auth_logic.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = auth_logic.create_access_token(
+        data={"sub": user.email}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+

@@ -3,7 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 
 // Replace with your local IP if running on device, or localhost for simulator
 // For Android Emulator use 10.0.2.2
-const API_URL = 'https://workout-monster-backend.onrender.com'; // Production Render Backend
+const API_URL = 'http://192.168.0.108:8000'; // Local backend for development - change to Render URL for production
 
 const api = axios.create({
   baseURL: API_URL,

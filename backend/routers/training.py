@@ -106,7 +106,7 @@ def log_set(set_data: schemas.WorkoutSetCreate, current_user: models.User = Depe
     # Ideally we need history check here.
     
     suggestion = "Maintain weight"
-    if set_data.rpe <= 8.5 and set_data.reps >= 8:
+    if set_data.rpe is not None and set_data.rpe <= 8.5 and set_data.reps >= 8:
         suggestion = "Consider +2.5kg next set/session"
     
     return {"set": new_set, "suggestion": suggestion}
@@ -331,3 +331,86 @@ def delete_plan(
     db.delete(plan)
     db.commit()
     return {"message": "Plan deleted"}
+
+@router.get("/exercise/{exercise_id}/history")
+def get_exercise_history(
+    exercise_id: str,
+    limit: int = 20,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """Get past workout sets for a specific exercise, grouped by workout date"""
+    from uuid import UUID
+    import datetime
+
+    try:
+        ex_uuid = UUID(exercise_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid exercise ID")
+
+    # Get all sets for this exercise by this user, ordered by workout date desc
+    sets = (
+        db.query(models.WorkoutSets, models.Workouts)
+        .join(models.Workouts, models.WorkoutSets.workout_id == models.Workouts.id)
+        .filter(
+            models.Workouts.user_id == current_user.id,
+            models.WorkoutSets.exercise_id == ex_uuid
+        )
+        .order_by(models.Workouts.start_time.desc())
+        .limit(limit * 10)
+        .all()
+    )
+
+    # Group by workout date
+    sessions = {}
+    for ws, workout in sets:
+        date_str = workout.start_time.date().isoformat() if workout.start_time else "unknown"
+        workout_id = str(workout.id)
+        key = f"{date_str}_{workout_id}"
+        if key not in sessions:
+            sessions[key] = {
+                "date": date_str,
+                "workout_id": workout_id,
+                "sets": [],
+                "max_weight": 0,
+                "total_volume": 0,
+            }
+        sessions[key]["sets"].append({
+            "set_order": ws.set_order,
+            "weight_kg": float(ws.weight_kg) if ws.weight_kg else 0,
+            "reps": ws.reps,
+            "rpe": float(ws.rpe) if ws.rpe else None,
+        })
+        w = float(ws.weight_kg) if ws.weight_kg else 0
+        r = ws.reps or 0
+        sessions[key]["max_weight"] = max(sessions[key]["max_weight"], w)
+        sessions[key]["total_volume"] += w * r
+
+    result = sorted(sessions.values(), key=lambda x: x["date"])[-limit:]
+    return result
+
+@router.get("/history")
+def get_workout_history(
+    limit: int = 20,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """Get recent workout sessions for the current user"""
+    workouts = (
+        db.query(models.Workouts)
+        .filter(models.Workouts.user_id == current_user.id)
+        .order_by(models.Workouts.start_time.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "id": str(w.id),
+            "start_time": w.start_time.isoformat() if w.start_time else None,
+            "end_time": w.end_time.isoformat() if w.end_time else None,
+            "notes": w.notes,
+            "duration_min": int((w.end_time - w.start_time).total_seconds() / 60) if w.end_time and w.start_time else None,
+        }
+        for w in workouts
+    ]
+

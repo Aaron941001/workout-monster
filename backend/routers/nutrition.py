@@ -240,3 +240,30 @@ def log_from_food(
     db.commit()
     db.refresh(new_log)
     return new_log
+
+@router.delete("/log/{log_id}")
+def delete_food_log(log_id: str, current_user: models.User = Depends(get_current_user), db: Session = Depends(database.get_db)):
+    """Delete a food log entry and update daily aggregates"""
+    log = db.query(models.FoodLog).filter(
+        models.FoodLog.id == log_id,
+        models.FoodLog.user_id == current_user.id
+    ).first()
+    
+    if not log:
+        raise HTTPException(status_code=404, detail="Log entry not found")
+    
+    # Reverse the aggregates
+    daily = db.query(models.DailyLog).filter(
+        models.DailyLog.user_id == current_user.id,
+        models.DailyLog.date == log.date
+    ).first()
+    
+    if daily:
+        daily.calories_actual = max(0, daily.calories_actual - log.calories)
+        daily.protein_actual = max(0, daily.protein_actual - log.protein)
+        daily.carbs_actual = max(0, daily.carbs_actual - log.carbs)
+        daily.fats_actual = max(0, daily.fats_actual - log.fats)
+    
+    db.delete(log)
+    db.commit()
+    return {"message": "Deleted successfully"}

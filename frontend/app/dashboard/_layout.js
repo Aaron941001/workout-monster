@@ -34,7 +34,7 @@ export default function DashboardLayout() {
                 }}
             />
             <Tabs.Screen
-                name="nutrition/index"
+                name="nutrition"
                 options={{
                     title: i18n.t('nutrition'),
                     tabBarIcon: ({ color, size }) => (

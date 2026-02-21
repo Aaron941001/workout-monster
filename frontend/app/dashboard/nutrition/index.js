@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import api from '../../../utils/api';
 import { Ionicons } from '@expo/vector-icons';
 import FoodSearchModal from '../../../components/nutrition/FoodSearchModal';
@@ -18,6 +18,8 @@ export default function Nutrition() {
     const [protein, setProtein] = useState('');
     const [carbs, setCarbs] = useState('');
     const [fats, setFats] = useState('');
+
+    const router = useRouter();
 
     const fetchData = async () => {
         try {
@@ -92,16 +94,21 @@ export default function Nutrition() {
             contentContainerStyle={styles.container}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#a3e635" />}
         >
-            <Text style={styles.header}>Daily Nutrition</Text>
-
+            {/* Header with history icon */}
+            <View style={styles.headerRow}>
+                <Text style={styles.header}>{t('nutrition')}</Text>
+                <TouchableOpacity onPress={() => router.push('/dashboard/nutrition/history')} style={styles.historyIconBtn}>
+                    <Ionicons name="bar-chart-outline" size={22} color="#a3e635" />
+                </TouchableOpacity>
+            </View>
             {/* Main Calorie Card */}
             <View style={[styles.card, targets.is_training_day ? styles.trainingCard : styles.restCard]}>
-                <Text style={styles.dayType}>{data.is_training_day ? "TRAINING DAY" : "REST DAY"}</Text>
+                <Text style={styles.dayType}>{data.is_training_day ? t('training').toUpperCase() : 'REST DAY'}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
                     <Text style={styles.calories}>{remainingCals}</Text>
-                    <Text style={styles.calLabel}> kcal left</Text>
+                    <Text style={styles.calLabel}> {t('kcal')} left</Text>
                 </View>
-                <Text style={styles.subtext}>Goal: {targets.calories} - Eaten: {actuals.calories}</Text>
+                <Text style={styles.subtext}>Goal: {targets.calories} - {t('log_entry')}: {actuals.calories}</Text>
             </View>
 
             {/* Macros */}
@@ -111,26 +118,20 @@ export default function Nutrition() {
                 <MacroBar label="Fats" actual={actuals.fats} target={targets.fats} color="#fbbf24" />
             </View>
 
-            {/* Quick Add Button */}
-            <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
-                <Ionicons name="add-circle" size={24} color="#0f172a" />
-                <Text style={styles.addButtonText}>Log Meal</Text>
-            </TouchableOpacity>
-
-            {/* Action Buttons */}
+            {/* Action Buttons — Search + Manual only; history is in header */}
             <View style={styles.buttonRow}>
                 <TouchableOpacity style={[styles.actionButton, styles.searchButton]} onPress={() => setFoodSearchVisible(true)}>
                     <Ionicons name="search" size={20} color="#fff" />
                     <Text style={styles.actionButtonText}>{t('search_foods')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.actionButton, styles.logButton]} onPress={() => setModalVisible(true)}>
-                    <Ionicons name="add-circle" size={20} color="#fff" />
-                    <Text style={styles.actionButtonText}>Manual Log</Text>
+                    <Ionicons name="create-outline" size={20} color="#fff" />
+                    <Text style={styles.actionButtonText}>{t('manual_log')}</Text>
                 </TouchableOpacity>
             </View>
 
             {/* Logs List */}
-            <Text style={styles.sectionTitle}>Today's Logs</Text>
+            <Text style={styles.sectionTitle}>{t('recent_history')}</Text>
             {logs.map((log) => (
                 <View key={log.id} style={styles.logItem}>
                     <View>
@@ -143,7 +144,7 @@ export default function Nutrition() {
                     </View>
                 </View>
             ))}
-            {logs.length === 0 && <Text style={{ color: '#64748b', textAlign: 'center' }}>No meals logged yet.</Text>}
+            {logs.length === 0 && <Text style={{ color: '#64748b', textAlign: 'center' }}>{t('no_history')}</Text>}
 
             <View style={{ height: 50 }} />
 
@@ -151,9 +152,9 @@ export default function Nutrition() {
             <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Log Food</Text>
+                        <Text style={styles.modalTitle}>{t('manual_log')}</Text>
 
-                        <Text style={styles.inputLabel}>Food Name</Text>
+                        <Text style={styles.inputLabel}>{t('meal_name')}</Text>
                         <TextInput style={styles.input} value={foodName} onChangeText={setFoodName} placeholder="e.g. Chicken Rice" placeholderTextColor="#64748b" />
 
                         <Text style={styles.inputLabel}>Calories</Text>
@@ -161,25 +162,25 @@ export default function Nutrition() {
 
                         <View style={{ flexDirection: 'row', gap: 10 }}>
                             <View style={{ flex: 1 }}>
-                                <Text style={styles.inputLabel}>Protein (g)</Text>
+                                <Text style={styles.inputLabel}>{t('macros_protein')}</Text>
                                 <TextInput style={styles.input} value={protein} onChangeText={setProtein} keyboardType="numeric" placeholder="0" placeholderTextColor="#64748b" />
                             </View>
                             <View style={{ flex: 1 }}>
-                                <Text style={styles.inputLabel}>Carbs (g)</Text>
+                                <Text style={styles.inputLabel}>{t('macros_carbs')}</Text>
                                 <TextInput style={styles.input} value={carbs} onChangeText={setCarbs} keyboardType="numeric" placeholder="0" placeholderTextColor="#64748b" />
                             </View>
                             <View style={{ flex: 1 }}>
-                                <Text style={styles.inputLabel}>Fats (g)</Text>
+                                <Text style={styles.inputLabel}>{t('macros_fats')}</Text>
                                 <TextInput style={styles.input} value={fats} onChangeText={setFats} keyboardType="numeric" placeholder="0" placeholderTextColor="#64748b" />
                             </View>
                         </View>
 
                         <View style={styles.modalButtons}>
                             <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
-                                <Text style={styles.cancelText}>Cancel</Text>
+                                <Text style={styles.cancelText}>{t('cancel')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.saveBtn} onPress={handleLogFood}>
-                                <Text style={styles.saveText}>Save Log</Text>
+                                <Text style={styles.saveText}>{t('save')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -206,12 +207,24 @@ const styles = StyleSheet.create({
         backgroundColor: '#0f172a',
         padding: 24,
     },
+    headerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 24,
+        marginTop: 24,
+    },
+    historyIconBtn: {
+        padding: 8,
+        backgroundColor: '#1e293b',
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(163, 230, 53, 0.3)',
+    },
     header: {
         fontSize: 28,
         fontWeight: 'bold',
         color: '#f8fafc',
-        marginBottom: 24,
-        marginTop: 24,
     },
     card: {
         backgroundColor: '#1e293b',
@@ -404,6 +417,9 @@ const styles = StyleSheet.create({
     },
     logButton: {
         backgroundColor: '#10b981',
+    },
+    historyButton: {
+        backgroundColor: '#8b5cf6',
     },
     actionButtonText: {
         color: '#fff',

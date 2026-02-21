@@ -5,6 +5,7 @@ import api from '../../../../utils/api';
 import { Ionicons } from '@expo/vector-icons';
 import i18n from '../../../../utils/i18n';
 import { LinearGradient } from 'expo-linear-gradient';
+import { setPendingExercises } from '../../../../utils/workoutStore';
 
 export default function PlanDetails() {
     const { id } = useLocalSearchParams(); // Plan ID
@@ -62,24 +63,29 @@ export default function PlanDetails() {
         }
     }
 
-    const startWorkout = async (dayIdentifier) => {
+    const startWorkout = async (dayIdentifier, dayExercises) => {
         try {
             let url = '/training/session/start';
-            let pushUrl = '';
 
             if (id !== 'default') {
                 url += `?plan_id=${id}`;
-                const response = await api.post(url);
-                const workoutId = response.data.id;
-                pushUrl = `/dashboard/training/${workoutId}?planId=${id}&dayName=${encodeURIComponent(dayIdentifier)}`;
             } else {
                 url += `?plan_id=${dayIdentifier}`;
-                const response = await api.post(url);
-                const workoutId = response.data.id;
-                pushUrl = `/dashboard/training/${workoutId}?planId=${dayIdentifier}`;
             }
 
-            router.push(pushUrl);
+            const response = await api.post(url);
+            const workoutId = response.data.id;
+
+            // Store exercises in module-level store (avoids URL param size limits)
+            setPendingExercises(dayExercises || []);
+
+            router.push({
+                pathname: `/dashboard/training/${workoutId}`,
+                params: {
+                    planId: id !== 'default' ? id : dayIdentifier,
+                    dayName: dayIdentifier,
+                }
+            });
         } catch (e) {
             console.log('Error starting session', e);
             alert(i18n.t('error_saving'));
@@ -100,7 +106,6 @@ export default function PlanDetails() {
 
     return (
         <View style={styles.container}>
-            {/* Snorlax Header Background */}
             <ImageBackground
                 source={require('../../../../assets/images/monster_sleeping.png')}
                 style={styles.headerBackground}
@@ -135,7 +140,7 @@ export default function PlanDetails() {
                 <Text style={styles.sectionHeader}>{i18n.t('select_plan')}</Text>
 
                 {days.map((day, index) => (
-                    <TouchableOpacity key={index} onPress={() => startWorkout(day.id || day.name)}>
+                    <View key={index}>
                         <LinearGradient
                             colors={['rgba(30, 41, 59, 0.9)', 'rgba(15, 23, 42, 0.95)']}
                             style={styles.card}
@@ -144,26 +149,42 @@ export default function PlanDetails() {
                         >
                             <View style={styles.cardHeader}>
                                 <View style={styles.dayBadge}>
-                                    <Text style={styles.dayBadgeText}>DAY {index + 1}</Text>
+                                    <Text style={styles.dayBadgeText}>
+                                        {i18n.locale?.startsWith('zh') ? `第${index + 1}天` : `DAY ${index + 1}`}
+                                    </Text>
                                 </View>
                                 <Text style={styles.cardTitle}>{day.name}</Text>
                             </View>
 
+                            {/* Exercise list — each row tappable to view history */}
                             <View style={styles.exercisePreview}>
-                                {day.exercises.slice(0, 3).map((e, i) => (
-                                    <Text key={i} style={styles.exerciseText}>• {e.name_zh || e.name}</Text>
+                                {day.exercises.map((e, i) => (
+                                    <TouchableOpacity
+                                        key={i}
+                                        style={styles.exerciseRow}
+                                        onPress={() => router.push({
+                                            pathname: `/dashboard/training/exercise_history/${e.exercise_id || e.id}`,
+                                            params: {
+                                                exercise_id: e.exercise_id || e.id,
+                                                exercise_name: encodeURIComponent(e.name || ''),
+                                                exercise_name_zh: encodeURIComponent(e.name_zh || ''),
+                                            }
+                                        })}
+                                    >
+                                        <Text style={styles.exerciseText}>
+                                            {i18n.locale?.startsWith('zh') && e.name_zh ? e.name_zh : e.name}
+                                        </Text>
+                                        <Ionicons name="trending-up-outline" size={14} color="#475569" />
+                                    </TouchableOpacity>
                                 ))}
-                                {day.exercises.length > 3 && (
-                                    <Text style={styles.moreText}>+ {day.exercises.length - 3} more</Text>
-                                )}
                             </View>
 
-                            <View style={styles.startBadge}>
+                            <TouchableOpacity onPress={() => startWorkout(day.id || day.name, day.exercises)} style={styles.startBadge}>
                                 <Text style={styles.startText}>{i18n.t('start_workout')}</Text>
                                 <Ionicons name="arrow-forward" size={16} color="#0f172a" />
-                            </View>
+                            </TouchableOpacity>
                         </LinearGradient>
-                    </TouchableOpacity>
+                    </View>
                 ))}
             </ScrollView>
         </View>
@@ -257,16 +278,18 @@ const styles = StyleSheet.create({
     exercisePreview: {
         marginBottom: 16,
     },
+    exerciseRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 6,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255,255,255,0.05)',
+    },
     exerciseText: {
         color: '#94a3b8',
         fontSize: 14,
-        marginBottom: 4,
-    },
-    moreText: {
-        color: '#64748b',
-        fontSize: 12,
-        fontStyle: 'italic',
-        marginTop: 2,
+        flex: 1,
     },
     startBadge: {
         flexDirection: 'row',

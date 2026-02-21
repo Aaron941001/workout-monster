@@ -1,6 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
-import * as LocalAuthentication from 'expo-local-authentication';
 import api from '../utils/api';
 
 export const AuthContext = createContext();
@@ -8,11 +7,12 @@ export const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
     const [userToken, setUserToken] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [userInfo, setUserInfo] = useState(null);
 
     const login = async (email, password) => {
         try {
             const formData = new FormData();
-            formData.append('username', email); // OAuth2 expects 'username'
+            formData.append('username', email);
             formData.append('password', password);
 
             const response = await api.post('/auth/login', formData, {
@@ -22,13 +22,24 @@ export const AuthProvider = ({ children }) => {
             const token = response.data.access_token;
             setUserToken(token);
             await SecureStore.setItemAsync('userToken', token);
-            // Save credentials for Biometrics later
-            await SecureStore.setItemAsync('userEmail', email);
-            await SecureStore.setItemAsync('userPassword', password);
-
+            await _fetchUserInfo(token);
             return true;
         } catch (error) {
             console.log('Login error', error);
+            throw error;
+        }
+    };
+
+    const loginWithGoogle = async (idToken) => {
+        try {
+            const response = await api.post('/auth/google', { id_token: idToken });
+            const token = response.data.access_token;
+            setUserToken(token);
+            await SecureStore.setItemAsync('userToken', token);
+            await _fetchUserInfo(token);
+            return true;
+        } catch (error) {
+            console.log('Google login error', error);
             throw error;
         }
     };
@@ -39,6 +50,7 @@ export const AuthProvider = ({ children }) => {
             const token = response.data.access_token;
             setUserToken(token);
             await SecureStore.setItemAsync('userToken', token);
+            await _fetchUserInfo(token);
             return true;
         } catch (error) {
             console.log('Signup error', error);
@@ -48,16 +60,33 @@ export const AuthProvider = ({ children }) => {
 
     const logout = async () => {
         setUserToken(null);
+        setUserInfo(null);
         await SecureStore.deleteItemAsync('userToken');
+    };
+
+    const _fetchUserInfo = async (token) => {
+        try {
+            // Set the token temporarily to make the request
+            const resp = await api.get('/user/me', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setUserInfo(resp.data);
+        } catch (e) {
+            console.log('Could not fetch user info', e);
+        }
     };
 
     const isLoggedIn = async () => {
         try {
             const token = await SecureStore.getItemAsync('userToken');
             setUserToken(token);
-            setIsLoading(false);
+            if (token) {
+                await _fetchUserInfo(token);
+            }
         } catch (error) {
             console.log('isLoggedIn error', error);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -65,41 +94,8 @@ export const AuthProvider = ({ children }) => {
         isLoggedIn();
     }, []);
 
-    const loginWithBiometrics = async () => {
-        try {
-            const hasHardware = await LocalAuthentication.hasHardwareAsync();
-            const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-
-            if (!hasHardware || !isEnrolled) {
-                alert('Face ID / Touch ID not available');
-                return false;
-            }
-
-            const email = await SecureStore.getItemAsync('userEmail');
-            const password = await SecureStore.getItemAsync('userPassword');
-
-            if (!email || !password) {
-                alert('No credentials saved. Please log in manually first to enable Face ID.');
-                return false;
-            }
-
-            const result = await LocalAuthentication.authenticateAsync({
-                promptMessage: 'Login with Face ID',
-                fallbackLabel: 'Use Passcode'
-            });
-
-            if (result.success) {
-                return await login(email, password);
-            }
-            return false;
-        } catch (error) {
-            console.log('Biometric error', error);
-            return false;
-        }
-    };
-
     return (
-        <AuthContext.Provider value={{ login, signup, logout, loginWithBiometrics, isLoading, userToken }}>
+        <AuthContext.Provider value={{ login, signup, logout, loginWithGoogle, isLoading, userToken, userInfo }}>
             {children}
         </AuthContext.Provider>
     );

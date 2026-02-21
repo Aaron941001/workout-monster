@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, Modal, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { t } from '../../utils/i18n';
+import i18n, { t } from '../../utils/i18n';
 import api from '../../utils/api';
 
 export default function FoodSearchModal({ visible, onClose, onSelect }) {
@@ -10,7 +10,7 @@ export default function FoodSearchModal({ visible, onClose, onSelect }) {
     const [loading, setLoading] = useState(false);
     const [selectedFood, setSelectedFood] = useState(null);
     const [servings, setServings] = useState('1');
-    const [mealName, setMealName] = useState('Meal');
+    const [mealName, setMealName] = useState(i18n.locale?.startsWith('zh') ? '餐點' : 'Meal');
 
     useEffect(() => {
         if (visible && searchQuery.length > 0) {
@@ -68,12 +68,12 @@ export default function FoodSearchModal({ visible, onClose, onSelect }) {
         setSearchQuery('');
         setSelectedFood(null);
         setServings('1');
-        setMealName('Meal');
+        setMealName(i18n.locale?.startsWith('zh') ? '餐點' : 'Meal');
         onClose();
     };
 
     const renderFoodItem = ({ item }) => {
-        const lang = global.language || 'en';
+        const lang = i18n.locale?.startsWith('zh') ? 'zh' : 'en';
         const name = lang === 'zh' && item.name_zh ? item.name_zh : item.name;
         const servingSize = lang === 'zh' && item.serving_size_zh ? item.serving_size_zh : item.serving_size;
 

@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useContext } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, RefreshControl, Dimensions, FlatList, Image } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import api from '../../utils/api';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from "react-native-gifted-charts";
-
+import { AuthContext } from '../../context/AuthContext';
 import i18n from '../../utils/i18n';
 
 const TrendCard = ({ data }) => {
@@ -139,6 +139,7 @@ const HistoryItem = ({ item, onDelete }) => (
 );
 
 export default function Dashboard() {
+    const { userInfo } = useContext(AuthContext);
     const [trends, setTrends] = useState({});
     const [history, setHistory] = useState([]);
     const [refreshing, setRefreshing] = useState(false);
@@ -204,7 +205,7 @@ export default function Dashboard() {
             }
         >
             <View style={styles.header}>
-                <Text style={styles.greeting}>{i18n.t('hello')}, Lifter</Text>
+                <Text style={styles.greeting}>{i18n.t('hello')}, {userInfo?.display_name || 'Lifter'} 💪</Text>
                 <Text style={styles.date}>{new Date().toLocaleDateString()}</Text>
             </View>
 
