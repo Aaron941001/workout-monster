@@ -51,6 +51,15 @@ export default function DashboardLayout() {
                     ),
                 }}
             />
+            <Tabs.Screen
+                name="ai"
+                options={{
+                    title: i18n.t('ai_coach'),
+                    tabBarIcon: ({ color, size }) => (
+                        <Ionicons name="hardware-chip-outline" size={size} color={color} />
+                    ),
+                }}
+            />
         </Tabs>
     );
 }

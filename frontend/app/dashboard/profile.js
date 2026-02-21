@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
@@ -13,10 +13,14 @@ export default function Profile() {
     const router = useRouter();
     const [user, setUser] = useState(null);
     const [currentLang, setCurrentLang] = useState(i18n.locale);
+    const [apiKey, setApiKey] = useState('');
+    const [hasKey, setHasKey] = useState(false);
+    const [keySaving, setKeySaving] = useState(false);
 
     useEffect(() => {
         fetchUser();
         loadLanguage();
+        checkAiKey();
     }, []);
 
     const loadLanguage = async () => {
@@ -59,6 +63,28 @@ export default function Profile() {
     const handleLogout = async () => {
         await logout();
         router.replace('/');
+    };
+
+    const checkAiKey = async () => {
+        try {
+            const res = await api.get('/ai/key');
+            setHasKey(res.data.has_key);
+        } catch (e) { /* ignore */ }
+    };
+
+    const saveApiKey = async () => {
+        if (!apiKey.trim()) return;
+        setKeySaving(true);
+        try {
+            await api.post('/ai/key', { api_key: apiKey.trim() });
+            setHasKey(true);
+            setApiKey('');
+            Alert.alert('', i18n.t('ai_key_saved'));
+        } catch (e) {
+            Alert.alert('Error', 'Failed to save key');
+        } finally {
+            setKeySaving(false);
+        }
     };
 
     return (
@@ -105,6 +131,31 @@ export default function Profile() {
                         {currentLang.startsWith('zh') && <Ionicons name="checkmark-circle" size={20} color="#a3e635" />}
                     </TouchableOpacity>
                 </View>
+            </View>
+
+            {/* AI Coach Settings */}
+            <View style={styles.card}>
+                <Text style={styles.sectionTitle}>{i18n.t('ai_coach_settings')}</Text>
+                <Text style={styles.label}>
+                    {hasKey ? i18n.t('ai_key_status_set') : i18n.t('ai_key_status_none')}
+                </Text>
+                <TextInput
+                    style={styles.keyInput}
+                    value={apiKey}
+                    onChangeText={setApiKey}
+                    placeholder={i18n.t('ai_key_placeholder')}
+                    placeholderTextColor="#475569"
+                    secureTextEntry
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                />
+                <TouchableOpacity
+                    style={[styles.saveKeyBtn, keySaving && { opacity: 0.5 }]}
+                    onPress={saveApiKey}
+                    disabled={keySaving}
+                >
+                    <Text style={styles.saveKeyText}>{keySaving ? i18n.t('loading') : i18n.t('ai_key_save')}</Text>
+                </TouchableOpacity>
             </View>
 
             <TouchableOpacity style={styles.button} onPress={handleLogout}>
@@ -199,5 +250,28 @@ const styles = StyleSheet.create({
     langTextActive: {
         color: '#a3e635',
         fontWeight: 'bold',
+    },
+    keyInput: {
+        backgroundColor: '#0f172a',
+        color: '#f8fafc',
+        borderRadius: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        fontSize: 14,
+        marginTop: 8,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#334155',
+    },
+    saveKeyBtn: {
+        backgroundColor: '#a3e635',
+        padding: 14,
+        borderRadius: 10,
+        alignItems: 'center',
+    },
+    saveKeyText: {
+        color: '#0f172a',
+        fontWeight: 'bold',
+        fontSize: 14,
     },
 });
